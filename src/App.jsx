@@ -94,7 +94,7 @@ const timeInputRef = useRef(null);
       setDeviceOnline(false);
       pushEvent("offline", "No device events recently");
       toast.warn("Device offline");
-    }, 60000);
+    }, 3000);
   }
 
   function clearFeedTimeout() {
