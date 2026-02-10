@@ -11,6 +11,8 @@ import {
   Clock
 } from 'three';
 
+
+const DEFAULT_BOTTOM_WAVE = { x: 2.0, y: -0.7, rotate: 0.4 };
 const vertexShader = `
 precision highp float;
 
@@ -234,7 +236,7 @@ export default function FloatingLines({
   lineDistance = [5],
   topWavePosition,
   middleWavePosition,
-  bottomWavePosition = { x: 2.0, y: -0.7, rotate: -1 },
+  bottomWavePosition = DEFAULT_BOTTOM_WAVE,
   animationSpeed = 1,
   interactive = true,
   bendRadius = 5.0,
