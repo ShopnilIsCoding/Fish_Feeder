@@ -38,6 +38,13 @@ function decodeAblyData(data) {
 }
 
 export default function App() {
+
+  // bg
+  const waves = useMemo(() => ["top", "bottom"], []);
+const lineCountMemo = useMemo(() => 12, []);
+const lineDistanceMemo = useMemo(() => 40.5, []);
+
+
   const deviceId = import.meta.env.VITE_DEVICE_ID || "feeder01";
   const topicCmd = `${deviceId}/cmd`;
   const topicEvt = `${deviceId}/evt`;
@@ -330,17 +337,16 @@ async function clearSchedule() {
   return (
     <div className="relative w-full min-h-screen bg-transparent text-slate-100">
 
-  <FloatingLines 
-    enabledWaves={["top","bottom"]}
-    // Array - specify line count per wave; Number - same count for all waves
-    lineCount={12}
-    // Array - specify line distance per wave; Number - same distance for all waves
-    lineDistance={40.5}
-    bendRadius={13.5}
-    bendStrength={4.5}
-    interactive={true}
-    parallax={true}
-  />
+  <FloatingLines
+  enabledWaves={waves}
+  lineCount={lineCountMemo}
+  lineDistance={lineDistanceMemo}
+  bendRadius={13.5}
+  bendStrength={4.5}
+  interactive={true}
+  parallax={true}
+/>
+
 
       <div className="mx-auto  max-w-6xl px-4 py-8 ">
         <div className="flex flex-col gap-3  sm:flex-row sm:items-start sm:justify-between">
