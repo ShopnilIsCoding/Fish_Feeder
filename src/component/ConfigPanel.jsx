@@ -1,62 +1,62 @@
-// src/component/ConfigPanel.jsx
+// src/components/ConfigPanel.jsx
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import { cls } from "../lib/format";
 
 function clamp(n, min, max) {
-  return Math.max(min, Math.min(max, n));
+  const v = Number(n);
+  if (!Number.isFinite(v)) return min;
+  return Math.max(min, Math.min(max, v));
 }
 
 export default function ConfigPanel({
   connState,
   onSaveConfig,
-  initialConfig, // optional (later: from get_state)
+  initialConfig, // from DB: { idleAngle, feedAngle, feedMs, oledOn }
 }) {
   const defaults = useMemo(
     () => ({
-      idle_angle: 0,
-      feed_angle: 150,
-      feed_ms: 500,
-      oled: 1,
+      idleAngle: 0,
+      feedAngle: 150,
+      feedMs: 500,
+      oledOn: true,
     }),
     []
   );
 
-  const [idleAngle, setIdleAngle] = useState(defaults.idle_angle);
-  const [feedAngle, setFeedAngle] = useState(defaults.feed_angle);
-  const [feedMs, setFeedMs] = useState(defaults.feed_ms);
-  const [oled, setOled] = useState(!!defaults.oled);
+  const [idleAngle, setIdleAngle] = useState(defaults.idleAngle);
+  const [feedAngle, setFeedAngle] = useState(defaults.feedAngle);
+  const [feedMs, setFeedMs] = useState(defaults.feedMs);
+  const [oledOn, setOledOn] = useState(defaults.oledOn);
 
- 
+  // hydrate from DB config after reload
   useEffect(() => {
     if (!initialConfig) return;
-    if (typeof initialConfig.idle_angle === "number") setIdleAngle(initialConfig.idle_angle);
-    if (typeof initialConfig.feed_angle === "number") setFeedAngle(initialConfig.feed_angle);
-    if (typeof initialConfig.feed_ms === "number") setFeedMs(initialConfig.feed_ms);
-    if (typeof initialConfig.oled === "number") setOled(initialConfig.oled !== 0);
-    if (typeof initialConfig.oled === "boolean") setOled(initialConfig.oled);
+
+    if (typeof initialConfig.idleAngle === "number") setIdleAngle(initialConfig.idleAngle);
+    if (typeof initialConfig.feedAngle === "number") setFeedAngle(initialConfig.feedAngle);
+    if (typeof initialConfig.feedMs === "number") setFeedMs(initialConfig.feedMs);
+    if (typeof initialConfig.oledOn === "boolean") setOledOn(initialConfig.oledOn);
   }, [initialConfig]);
 
-  const disabled = connState !== "connected";
-
+  // DB save should NOT be blocked when device is offline
   function submit() {
-    if (disabled) {
-      toast.error("Not connected");
-      return;
-    }
-
-    const payload = {
-      idle_angle: clamp(Number(idleAngle), 0, 180),
-      feed_angle: clamp(Number(feedAngle), 0, 180),
-      feed_ms: clamp(Number(feedMs), 50, 10000),
-      oled: oled ? 1 : 0,
+    const dbPayload = {
+      idleAngle: clamp(idleAngle, 0, 180),
+      feedAngle: clamp(feedAngle, 0, 180),
+      feedMs: clamp(feedMs, 50, 10000),
+      oledOn: !!oledOn,
     };
 
-    onSaveConfig?.(payload);
+    onSaveConfig?.(dbPayload);
+
+    if (connState !== "connected") {
+      toast.info("Saved in database. Device offline, will sync later.");
+    }
   }
 
   return (
-    <div className="mt-4 rounded-2xl bg-black ring-1 ring-white/10 p-4">
+    <div className="mt-4 lg:w-1/2 rounded-2xl bg-black ring-1 ring-white/10 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-sm font-semibold">Device config</div>
@@ -67,13 +67,13 @@ export default function ConfigPanel({
 
         <span
           className={cls(
-            "inline-flex items-center rounded-full px-2 py-0.5 text-xs ring-1",
-            disabled
-              ? "bg-rose-500/10 ring-rose-400/30 text-rose-200"
+            "inline-flex items-center rounded-full px-2 py-0.5 text-xs ring-1 text-nowrap",
+            connState !== "connected"
+              ? "bg-amber-500/10 ring-amber-400/30 text-amber-200"
               : "bg-emerald-500/10 ring-emerald-400/30 text-emerald-200"
           )}
         >
-          {disabled ? "Locked" : "Ready"}
+          {connState !== "connected" ? "DB only" : "DB + Device"}
         </span>
       </div>
 
@@ -89,8 +89,7 @@ export default function ConfigPanel({
           max={180}
           value={idleAngle}
           onChange={(e) => setIdleAngle(Number(e.target.value))}
-          disabled={disabled}
-          className="mt-2 w-full"
+          className="mt-2 w-full cursor-pointer"
         />
       </div>
 
@@ -106,15 +105,14 @@ export default function ConfigPanel({
           max={180}
           value={feedAngle}
           onChange={(e) => setFeedAngle(Number(e.target.value))}
-          disabled={disabled}
-          className="mt-2 w-full"
+          className="mt-2 w-full cursor-pointer"
         />
       </div>
 
       {/* Feed ms */}
       <div className="mt-4">
         <div className="flex items-center justify-between text-xs text-slate-400">
-          <span>Feed time (ms)</span>
+          <span>Feeding time (ms)</span>
           <span className="font-mono text-slate-200">{feedMs} ms</span>
         </div>
         <input
@@ -123,7 +121,6 @@ export default function ConfigPanel({
           max={10000}
           value={feedMs}
           onChange={(e) => setFeedMs(e.target.value)}
-          disabled={disabled}
           className="mt-2 w-full rounded-xl bg-slate-950/60 px-3 py-2 text-sm ring-1 ring-white/10 outline-none"
         />
       </div>
@@ -136,32 +133,30 @@ export default function ConfigPanel({
         </div>
         <button
           type="button"
-          onClick={() => setOled((v) => !v)}
-          disabled={disabled}
+          onClick={() => setOledOn((v) => !v)}
           className={cls(
-            "rounded-full px-3 py-1.5 text-xs font-semibold ring-1",
-            oled
+            "rounded-full px-3 py-1.5 text-xs font-semibold ring-1 cursor-pointer",
+            oledOn
               ? "bg-emerald-500/10 ring-emerald-400/30 text-emerald-200"
-              : "bg-rose-500/10 ring-rose-400/30 text-rose-200",
-            disabled && "opacity-50 cursor-not-allowed"
+              : "bg-rose-500/10 ring-rose-400/30 text-rose-200"
           )}
         >
-          {oled ? "ON" : "OFF"}
+          {oledOn ? "ON" : "OFF"}
         </button>
       </div>
 
       <button
         onClick={submit}
-        disabled={disabled}
         className={cls(
-          "mt-4 w-full rounded-xl px-4 py-3 text-sm font-semibold",
+          "mt-4 w-full rounded-xl px-4 py-3 text-sm font-semibold cursor-pointer",
           "bg-gradient-to-r from-indigo-600 to-fuchsia-500 text-slate-950",
-          "hover:opacity-95 active:translate-y-px transition",
-          disabled && "opacity-50 cursor-not-allowed"
+          "hover:opacity-95 active:translate-y-px transition"
         )}
       >
         Save config
       </button>
+
+      
     </div>
   );
 }

@@ -54,7 +54,7 @@ export default function SchedulePanel({
   }
 
   return (
-    <div className="mt-5 rounded-2xl bg-black ring-1 ring-white/10 p-4">
+    <div className="mt-4 lg:w-1/2  rounded-2xl flex flex-col justify-between bg-black ring-1 ring-white/10 p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-sm font-semibold">Schedule</div>
@@ -64,7 +64,7 @@ export default function SchedulePanel({
         </div>
       </div>
 
-      <div className="mt-3 flex items-center gap-2 ring-1 ring-white/10 rounded-xl ">
+      <div className="mt-3 p-1 flex items-center gap-2 ring-1 ring-white/10 rounded-xl ">
         <input
           ref={timeInputRef}
           type="time"
@@ -96,7 +96,7 @@ export default function SchedulePanel({
           onClick={addTime}
           disabled={connState !== "connected"}
           className={cls(
-            "rounded-xl px-3 py-2 text-sm font-semibold w-1/2",
+            "rounded-xl px-3 py-2 text-sm font-semibold w-1/2 cursor-pointer",
             "bg-sky-500/90 text-slate-950 hover:opacity-95",
             connState !== "connected" && "opacity-50 cursor-not-allowed"
           )}
@@ -109,7 +109,7 @@ export default function SchedulePanel({
           onClick={onClearSchedule}
           disabled={connState !== "connected"}
           className={cls(
-            "ml-auto rounded-xl px-3 py-2 text-sm font-semibold w-1/2",
+            "ml-auto rounded-xl px-3 py-2 text-sm font-semibold w-1/2 cursor-pointer",
             "bg-rose-500/90 text-slate-950 hover:opacity-95",
             connState !== "connected" && "opacity-50 cursor-not-allowed"
           )}
@@ -131,7 +131,7 @@ export default function SchedulePanel({
               <button
                 type="button"
                 onClick={() => removeTime(t)}
-                className="h-6 w-6 rounded-full grid place-items-center bg-white/5 hover:bg-white/10"
+                className="h-6 w-6 cursor-pointer rounded-full grid place-items-center bg-white/5 hover:bg-white/10"
                 title="Remove"
               >
                 ×
@@ -145,11 +145,11 @@ export default function SchedulePanel({
         onClick={onSaveSchedule}
         disabled={connState !== "connected" || scheduleTimes.length === 0}
         className={cls(
-          "mt-4 w-full rounded-xl px-4 py-3 text-sm font-semibold",
+          "mt-4 w-full rounded-xl px-4 py-3 text-sm font-semibold cursor-pointer",
           "bg-gradient-to-r from-indigo-600 to-fuchsia-500 text-slate-950",
-          "hover:opacity-95 active:translate-y-px transition",
+          "hover:opacity-90 active:translate-y-px transition",
           (connState !== "connected" || scheduleTimes.length === 0) &&
-            "opacity-50 cursor-not-allowed"
+            " cursor-not-allowed"
         )}
       >
         Save schedule

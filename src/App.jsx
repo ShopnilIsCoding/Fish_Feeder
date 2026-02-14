@@ -8,8 +8,10 @@ import HeaderBar from "./component/HeaderBar";
 import EventsPanel from "./component/EventsPanel";
 import  { timesToCsv } from "./component/SchedulePanel";
 import ControlPanel from "./component/ControlPanel";
-
-
+import { useDeviceState } from "./lib/queries";
+import { useSaveSchedule,useSaveConfig } from "./lib/queries";
+import { useQueryClient } from "@tanstack/react-query";
+import { qk } from "./lib/queries";
 
 export default function App() {
 
@@ -33,15 +35,36 @@ const lineDistanceMemo = useMemo(() => 40.5, []);
   const [status, setStatus] = useState("READY");
   const [sending, setSending] = useState(false);
 
-  const [deviceOnline, setDeviceOnline] = useState(false);
-  const [lastSeen, setLastSeen] = useState(null);
+
   const [lastEvent, setLastEvent] = useState("—");
-  const [lastFeed, setLastFeed] = useState(null);
-  const [lastRssi, setLastRssi] = useState(null);
+    const { data: deviceState, isLoading: stateLoading } = useDeviceState(deviceId);
 
-  const [scheduleTimes, setScheduleTimes] = useState([]);
-  const [deviceConfig, setDeviceConfig] = useState(null);
+  
+  const [draftScheduleTimes, setDraftScheduleTimes] = useState([]);
+const scheduleTimes =
+  (deviceState?.scheduleCsv || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+    const saveConfigMut = useSaveConfig(deviceId);
 
+const defaultConfig = {
+  idleAngle: 0,
+  feedAngle: 150,
+  feedMs: 500,
+  oledOn: true,
+  emailNotify: true,
+};
+
+const [draft, setDraft] = useState(defaultConfig);
+
+const deviceOnline = !!deviceState?.online;
+const canTalkToDevice = connState === "connected" && deviceOnline && !!cmdCh.current;
+
+const lastSeen = deviceState?.lastSeen ? new Date(deviceState.lastSeen) : null;
+const lastFeed = deviceState?.lastFeed ? new Date(deviceState.lastFeed) : null;
+const lastRssi = typeof deviceState?.rssi === "number" ? deviceState.rssi : null;
+const initialConfig = deviceState?.config || null;
 
 
   const [events, setEvents] = useState([]);
@@ -50,21 +73,54 @@ const lineDistanceMemo = useMemo(() => 40.5, []);
   const staleTimerRef = useRef(null);
 
 
-  async function saveConfig(payload) {
-  if (!cmdCh.current || connState !== "connected") {
-    toast.error("Not connected");
+
+
+const qc = useQueryClient();
+
+async function saveConfig(payload) {
+  // payload is DB shape: { idleAngle, feedAngle, feedMs, oledOn }
+
+  // 1) save DB first
+  try {
+    await saveConfigMut.mutateAsync(payload);
+
+    qc.setQueryData(qk.deviceState(deviceId), (old) => ({
+      ...(old || {}),
+      config: payload,
+      updatedAt: new Date().toISOString(),
+    }));
+
+    toast.success("Saved config in database");
+  } catch (e) {
+    toast.error(e?.message || "Failed to save config in database");
     return;
   }
 
+  // 2) push to device if online
+  if (!canTalkToDevice) {
+  toast.info("Saved — will apply when device is online");
+  return;
+}
+
+
+  const devicePayload = {
+    type: "set_config",
+    idle_angle: payload.idleAngle,
+    feed_angle: payload.feedAngle,
+    feed_ms: payload.feedMs,
+    oled: payload.oledOn ? 1 : 0,
+  };
+
   try {
-    const msg = JSON.stringify({ type: "set_config", ...payload });
-    await cmdCh.current.publish("cmd", msg);
-    pushEvent("Config sent", msg);
-    toast.success("Config sent");
+    await cmdCh.current.publish("cmd", JSON.stringify(devicePayload));
+    pushEvent("Config sent to device", JSON.stringify(devicePayload));
+    toast.success("Config sent to device");
   } catch (e) {
-    toast.error(e?.message || "Failed to send config");
+    toast.error(e?.message || "Failed to send config to device");
   }
 }
+
+
 
 
   function pushEvent(label, detail = "") {
@@ -76,17 +132,12 @@ const lineDistanceMemo = useMemo(() => 40.5, []);
 
   function markSeen(evtName) {
     const now = new Date();
-    setLastSeen(now);
     setLastEvent(evtName);
-    setDeviceOnline(true);
+
 
     // Offline if no events for 60s (good with 20s heartbeat)
     if (staleTimerRef.current) clearTimeout(staleTimerRef.current);
-    staleTimerRef.current = setTimeout(() => {
-      setDeviceOnline(false);
-      pushEvent("offline: No device events recently", "No device events recently");
-      toast.warn("Device offline");
-    }, 3000);
+    
   }
 
   function clearFeedTimeout() {
@@ -95,6 +146,23 @@ const lineDistanceMemo = useMemo(() => 40.5, []);
       feedTimeoutRef.current = null;
     }
   }
+
+
+  const saveScheduleMut = useSaveSchedule(deviceId);
+
+useEffect(() => {
+  // whenever DB schedule changes, reset draft
+  setDraftScheduleTimes(scheduleTimes);
+}, [deviceState?.scheduleCsv]);
+
+useEffect(() => {
+  if (!initialConfig) return;
+
+  setDraft({
+    ...defaultConfig,
+    ...initialConfig,
+  });
+}, [initialConfig]);
 
   useEffect(() => {
     const onConn = (stateChange) => {
@@ -136,10 +204,18 @@ const lineDistanceMemo = useMemo(() => 40.5, []);
 
       markSeen(type);
 
-      if (rssi !== null) setLastRssi(rssi);
+      
 
       // heartbeat: no log spam
-      if (type === "hb") return;
+ if (type === "hb") {
+  qc.setQueryData(qk.deviceState(deviceId), (old) => ({
+    ...(old || {}),
+    lastSeen: new Date().toISOString(),
+    online: true,
+    rssi: typeof rssi === "number" ? rssi : (old?.rssi ?? null),
+  }));
+  return; // no log spam
+}
 
       if (String(type).includes("config_saved")) {
   pushEvent("Config saved on device", "config_saved");
@@ -159,7 +235,7 @@ const lineDistanceMemo = useMemo(() => 40.5, []);
         clearFeedTimeout();
         setSending(false);
         setStatus("READY");
-        setLastFeed(new Date());
+        
         pushEvent("Feeding completed", "Feed completed");
         toast.success("Feeding done ✅");
         return;
@@ -196,10 +272,11 @@ const lineDistanceMemo = useMemo(() => 40.5, []);
   }, []);
 
   async function feedNow() {
-    if (!cmdCh.current || connState !== "connected") {
-      toast.error("Not connected");
-      return;
-    }
+if (!canTalkToDevice) {
+  toast.error("Device is offline");
+  return;
+}
+
 
     setSending(true);
     setStatus("FEEDING");
@@ -216,6 +293,7 @@ const lineDistanceMemo = useMemo(() => 40.5, []);
 
     try {
       await cmdCh.current.publish("cmd", "feed_now");
+      toast.info("Feed command sent");
     } catch (e) {
       clearFeedTimeout();
       setSending(false);
@@ -244,45 +322,76 @@ const lineDistanceMemo = useMemo(() => 40.5, []);
   }
 
 async function saveSchedule() {
-  if (!cmdCh.current || connState !== "connected") {
-    toast.error("Not connected");
-    return;
-  }
-
-  if (scheduleTimes.length === 0) {
+  if (draftScheduleTimes.length === 0) {
     toast.error("Add at least one time");
     return;
   }
 
-  const csv = timesToCsv(scheduleTimes);
-  // console.log(csv.replace(","," and "));
+  const csv = timesToCsv(draftScheduleTimes);
+
+  // 1) DB first
+  try {
+    await saveScheduleMut.mutateAsync(csv);
+
+    qc.setQueryData(qk.deviceState(deviceId), (old) => ({
+      ...(old || {}),
+      scheduleCsv: csv,
+      updatedAt: new Date().toISOString(),
+    }));
+
+    toast.success("Saved schedule in database");
+  } catch (e) {
+    toast.error(e?.message || "Failed to save schedule in database");
+    return;
+  }
+
+  // 2) Device push only if connected
+if (!canTalkToDevice) {
+  toast.info("Saved — will apply when device is online");
+  return;
+}
+
 
   try {
     const msg = JSON.stringify({ type: "set_schedule", times: csv });
     await cmdCh.current.publish("cmd", msg);
-    pushEvent(`set schedule ${csv.replaceAll(","," & ")}`, `set_schedule ${csv}`);
-    toast.success("Schedule sent");
+    toast.success("Schedule sent to device");
   } catch (e) {
-    toast.error(e?.message || "Failed to send schedule");
+    toast.error(e?.message || "Failed to send schedule to device");
   }
 }
 
+
 async function clearSchedule() {
-  if (!cmdCh.current || connState !== "connected") {
-    toast.error("Not connected");
+  // 1) DB first
+  try {
+    await saveScheduleMut.mutateAsync("");
+    qc.setQueryData(qk.deviceState(deviceId), (old) => ({
+      ...(old || {}),
+      scheduleCsv: "",
+      updatedAt: new Date().toISOString(),
+    }));
+    toast.success("Cleared schedule in database");
+  } catch (e) {
+    toast.error(e?.message || "Failed to clear schedule in database");
+    return;
+  }
+
+  // 2) Device push if online
+  if (!canTalkToDevice) {
+    toast.info("Saved — will apply when device is online");
     return;
   }
 
   try {
-    const msg = JSON.stringify({ type: "clear_schedule" });
-    await cmdCh.current.publish("cmd", msg);
-    pushEvent("Schedule cleared", "clear_schedule");
-    setScheduleTimes([]);
-    toast.info("Schedule cleared");
+    await cmdCh.current.publish("cmd", JSON.stringify({ type: "clear_schedule" }));
+    pushEvent("Schedule cleared (sent to device)", "clear_schedule");
+    toast.success("Clear sent to device");
   } catch (e) {
-    toast.error(e?.message || "Failed to clear schedule");
+    toast.error(e?.message || "Failed to send clear to device");
   }
 }
+
 
   const connBadge = (() => {
     if (connState === "connected")
@@ -321,27 +430,40 @@ async function clearSchedule() {
   connError={connError}
   connBadge={connBadge}
   deviceBadge={deviceBadge}
+  lastSeen={deviceState?.lastSeen}
+  lastFeed={deviceState?.lastFeed}
+  lastRssi={deviceState?.rssi}
+  deviceOnline={!!deviceState?.online}
+  emailNotify={!!draft.emailNotify}
+  onToggleEmailNotify={(v) => {
+    const updated = { ...draft, emailNotify: v };
+    setDraft(updated);
+    saveConfig(updated);
+  }}
 />
 
 
-        <div className="mt-6 grid gap-4 grid-cols-1 lg:grid-cols-3 bg-transparent p-6 rounded-2xl">
+        <div className="mt-6 grid gap-4 grid-cols-1 lg:grid-cols-3 bg-transparent lg:p-6 rounded-2xl">
           {/* Control */}
           <ControlPanel
   status={status}
   sending={sending}
   connState={connState}
   onFeedNow={feedNow}
-  scheduleTimes={scheduleTimes}
-  setScheduleTimes={setScheduleTimes}
+  scheduleTimes={draftScheduleTimes}
+  setScheduleTimes={setDraftScheduleTimes}
   onSaveSchedule={saveSchedule}
   onClearSchedule={clearSchedule}
-  onSaveConfig={saveConfig}
-  initialConfig={deviceConfig}
+  onSaveConfig={(payload) => saveConfig(payload)}
+
+  initialConfig={initialConfig}
   lastSeen={lastSeen}
   lastEvent={lastEvent}
   lastFeed={lastFeed}
   lastRssi={lastRssi}
 />
+
+
 
 
 

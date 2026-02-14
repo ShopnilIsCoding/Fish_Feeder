@@ -1,7 +1,7 @@
 // src/components/EventsPanel.jsx
 export default function EventsPanel({ events, topicEvt, onClear }) {
   return (
-    <div className="rounded-2xl bg-slate-900/40 ring-1 ring-white/10 p-5 lg:col-span-2">
+    <div className="rounded-2xl bg-slate-900/40 ring-1 ring-white/10 p-5 lg:col-span-1">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">Live events</h2>
         <button
@@ -12,7 +12,7 @@ export default function EventsPanel({ events, topicEvt, onClear }) {
         </button>
       </div>
 
-      <div className="mt-3 lg:h-[993px] h-fit overflow-auto rounded-xl bg-slate-950/40 ring-1 ring-white/10">
+      <div className="mt-3 lg:h-[500px] h-fit overflow-auto rounded-xl bg-slate-950/40 ring-1 ring-white/10">
         {events.length === 0 ? (
           <div className="p-4 text-sm text-slate-400">No events yet.</div>
         ) : (

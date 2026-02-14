@@ -27,12 +27,12 @@ export default function ControlPanel({
   lastRssi,
 }) {
   return (
-    <div className="rounded-2xl bg-slate-950/30 ring-1 ring-white/10 p-5">
+    <div className="rounded-2xl lg:col-span-2 bg-slate-950/30 ring-1 ring-white/10 p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold">Control</h2>
           <p className="mt-1 text-sm text-slate-400">
-            Send <span className="font-mono">feed_now</span>, set schedule, or update device config.
+            Send <span className="font-mono">Feed Now</span>, Set Daily Schedule, or Update Device Config.
           </p>
         </div>
 
@@ -67,7 +67,8 @@ export default function ControlPanel({
         {sending ? "Sending..." : "Feed now"}
       </button>
 
-      <SchedulePanel
+     <div className="flex flex-col lg:flex-row gap-2">
+         <SchedulePanel
         connState={connState}
         scheduleTimes={scheduleTimes}
         setScheduleTimes={setScheduleTimes}
@@ -80,13 +81,10 @@ export default function ControlPanel({
         onSaveConfig={onSaveConfig}
         initialConfig={initialConfig}
       />
+     </div>
 
-      <DeviceInfoCards
-        lastSeen={lastSeen}
-        lastEvent={lastEvent}
-        lastFeed={lastFeed}
-        lastRssi={lastRssi}
-      />
+
+      
     </div>
   );
 }
