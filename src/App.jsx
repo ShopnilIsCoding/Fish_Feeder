@@ -12,6 +12,7 @@ import { useDeviceState } from "./lib/queries";
 import { useSaveSchedule,useSaveConfig } from "./lib/queries";
 import { useQueryClient } from "@tanstack/react-query";
 import { qk } from "./lib/queries";
+import Footer from "./component/Footer";
 
 export default function App() {
 
@@ -476,6 +477,8 @@ async function clearSchedule() {
 
         </div>
       </div>
+
+      <Footer/>
 
       <ToastContainer position="top-right" theme="dark" autoClose={2500} />
 
