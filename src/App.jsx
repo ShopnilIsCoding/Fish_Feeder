@@ -409,79 +409,85 @@ async function clearSchedule() {
     : { text: "Offline", ring: "ring-rose-400/30", bg: "bg-rose-500/10", dot: "bg-rose-400" };
 
   return (
-    <div className="relative  min-h-screen bg-transparent text-slate-100">
+    <div className="relative min-h-screen text-slate-100 overflow-hidden bg-slate-950">
+  {/* ✅ MOBILE BG (no arbitrary classes, should always show) */}
+  <div className="absolute inset-0 z-0 lg:hidden pointer-events-none">
+    {/* base gradient */}
+    <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-indigo-950/40 to-emerald-950/30" />
 
-  <FloatingLines
-  enabledWaves={waves}
-  lineCount={lineCountMemo}
-  lineDistance={lineDistanceMemo}
-  bendRadius={13.5}
-  bendStrength={4.5}
-  interactive={true}
-  parallax={true}
-/>
+    {/* glowing blobs */}
+    <div className="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-indigo-500/20 blur-3xl" />
+    <div className="absolute top-10 -right-24 h-72 w-72 rounded-full bg-emerald-500/15 blur-3xl" />
+    <div className="absolute -bottom-24 left-1/3 h-72 w-72 rounded-full bg-fuchsia-500/10 blur-3xl" />
 
+    {/* subtle highlight sweep */}
+    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-white/5" />
 
-      <div className="mx-auto  max-w-6xl px-4 py-8 ">
-        <HeaderBar
-  deviceId={deviceId}
-  topicCmd={topicCmd}
-  topicEvt={topicEvt}
-  connState={connState}
-  connError={connError}
-  connBadge={connBadge}
-  deviceBadge={deviceBadge}
-  lastSeen={deviceState?.lastSeen}
-  lastFeed={deviceState?.lastFeed}
-  lastRssi={deviceState?.rssi}
-  deviceOnline={!!deviceState?.online}
-  emailNotify={!!draft.emailNotify}
-  onToggleEmailNotify={(v) => {
-    const updated = { ...draft, emailNotify: v };
-    setDraft(updated);
-    saveConfig(updated);
-  }}
-/>
+    {/* soft grain */}
+    <div className="absolute inset-0 opacity-[0.06] bg-[linear-gradient(transparent_0,rgba(255,255,255,0.08)_1px,transparent_2px)] bg-[length:100%_6px]" />
+  </div>
 
+  {/* ✅ DESKTOP BG (FloatingLines only on lg+) */}
+  <div className="absolute inset-0 z-0 hidden lg:block pointer-events-none">
+    <FloatingLines
+      enabledWaves={waves}
+      lineCount={lineCountMemo}
+      lineDistance={lineDistanceMemo}
+      bendRadius={13.5}
+      bendStrength={4.5}
+      interactive
+      parallax
+    />
+  </div>
 
-        <div className="mt-6 grid gap-4 grid-cols-1 lg:grid-cols-3 bg-transparent lg:p-6 rounded-2xl">
-          {/* Control */}
-          <ControlPanel
-  status={status}
-  sending={sending}
-  connState={connState}
-  onFeedNow={feedNow}
-  scheduleTimes={draftScheduleTimes}
-  setScheduleTimes={setDraftScheduleTimes}
-  onSaveSchedule={saveSchedule}
-  onClearSchedule={clearSchedule}
-  onSaveConfig={(payload) => saveConfig(payload)}
+  {/* ✅ CONTENT */}
+  <div className="relative z-10 mx-auto max-w-6xl px-4 py-8">
+    <HeaderBar
+      deviceId={deviceId}
+      topicCmd={topicCmd}
+      topicEvt={topicEvt}
+      connState={connState}
+      connError={connError}
+      connBadge={connBadge}
+      deviceBadge={deviceBadge}
+      lastSeen={deviceState?.lastSeen}
+      lastFeed={deviceState?.lastFeed}
+      lastRssi={deviceState?.rssi}
+      deviceOnline={!!deviceState?.online}
+      emailNotify={!!draft.emailNotify}
+      onToggleEmailNotify={(v) => {
+        const updated = { ...draft, emailNotify: v };
+        setDraft(updated);
+        saveConfig(updated);
+      }}
+    />
 
-  initialConfig={initialConfig}
-  lastSeen={lastSeen}
-  lastEvent={lastEvent}
-  lastFeed={lastFeed}
-  lastRssi={lastRssi}
-/>
+    <div className="mt-6 grid gap-4 grid-cols-1 lg:grid-cols-3 bg-transparent lg:p-6 rounded-2xl">
+      <ControlPanel
+        status={status}
+        sending={sending}
+        connState={connState}
+        onFeedNow={feedNow}
+        scheduleTimes={draftScheduleTimes}
+        setScheduleTimes={setDraftScheduleTimes}
+        onSaveSchedule={saveSchedule}
+        onClearSchedule={clearSchedule}
+        onSaveConfig={(payload) => saveConfig(payload)}
+        initialConfig={initialConfig}
+        lastSeen={lastSeen}
+        lastEvent={lastEvent}
+        lastFeed={lastFeed}
+        lastRssi={lastRssi}
+      />
 
-
-
-
-
-          {/* Events */}
-          <EventsPanel
-  events={events}
-  topicEvt={topicEvt}
-  onClear={() => setEvents([])}
-/>
-
-        </div>
-      </div>
-
-      <Footer/>
-
-      <ToastContainer position="top-right" theme="dark" autoClose={2500} />
-
+      <EventsPanel events={events} topicEvt={topicEvt} onClear={() => setEvents([])} />
     </div>
+
+    <Footer />
+  </div>
+
+  <ToastContainer position="top-right" theme="dark" autoClose={2500} />
+</div>
+
   );
 }

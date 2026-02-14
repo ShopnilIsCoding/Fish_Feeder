@@ -205,7 +205,7 @@ export default function HeaderBar({
       {/* ===== BOTTOM ROW: Metrics + Toggle ===== */}
       <div className="">
         {/* metrics */}
-        <div className="grid lg:grid-cols-4 grid-cols-2 lg:gap-4 gap-2 ">
+        <div className="grid lg:grid-cols-4 grid-cols-2 lg:gap-4 gap-2 font-mono">
           <div className="rounded-2xl bg-black/20 ring-1 ring-white/10 px-3 py-2 ">
             <div className="text-[11px] text-slate-400">Seen</div>
             <div className="text-slate-200 font-medium truncate">
