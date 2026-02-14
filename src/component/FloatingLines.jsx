@@ -12,7 +12,7 @@ import {
 } from 'three';
 
 
-const DEFAULT_BOTTOM_WAVE = { x: 2.0, y: -0.7, rotate: 0.4 };
+const DEFAULT_BOTTOM_WAVE = { x: 2.0, y: -0.7, rotate: -1 };
 const vertexShader = `
 precision highp float;
 
@@ -232,14 +232,14 @@ function hexToVec3(hex) {
 export default function FloatingLines({
   linesGradient,
   enabledWaves = ['top', 'middle', 'bottom'],
-  lineCount = [3],
-  lineDistance = [10],
+  lineCount = [6],
+  lineDistance = [15],
   topWavePosition,
   middleWavePosition,
   bottomWavePosition = DEFAULT_BOTTOM_WAVE,
   animationSpeed = 1,
   interactive = true,
-  bendRadius = 2.0,
+  bendRadius = 5.0,
   bendStrength = -0.5,
   mouseDamping = 0.05,
   parallax = true,
